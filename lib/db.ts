@@ -22,6 +22,13 @@ export type IndexRow = {
   net_income:       string;
   past_due_30_89:   string;
   past_due_90_plus: string;
+  roa:              string;
+  roe:              string;
+  nim:              string;
+  efficiency_ratio: string;
+  ltd_ratio:        string;
+  npl_ratio:        string;
+  coverage_ratio:   string;
 };
 
 function toRow(r: Record<string, unknown>): IndexRow {
@@ -42,6 +49,13 @@ function toRow(r: Record<string, unknown>): IndexRow {
     net_income:       r.net_income       != null ? String(r.net_income)       : '',
     past_due_30_89:   r.past_due_30_89   != null ? String(r.past_due_30_89)   : '',
     past_due_90_plus: r.past_due_90_plus != null ? String(r.past_due_90_plus) : '',
+    roa:              r.roa              != null ? String(r.roa)              : '',
+    roe:              r.roe              != null ? String(r.roe)              : '',
+    nim:              r.nim              != null ? String(r.nim)              : '',
+    efficiency_ratio: r.efficiency_ratio != null ? String(r.efficiency_ratio) : '',
+    ltd_ratio:        r.ltd_ratio        != null ? String(r.ltd_ratio)        : '',
+    npl_ratio:        r.npl_ratio        != null ? String(r.npl_ratio)        : '',
+    coverage_ratio:   r.coverage_ratio   != null ? String(r.coverage_ratio)   : '',
   };
 }
 
@@ -120,7 +134,8 @@ export async function searchIndex(
   return { results: rows.map(toRow), total };
 }
 
-export type SortField = 'total_assets' | 'total_deposits' | 'total_equity' | 'net_income' | 'equity_ratio';
+export type SortField = 'total_assets' | 'total_deposits' | 'total_equity' | 'net_income' | 'equity_ratio'
+  | 'roa' | 'roe' | 'nim' | 'efficiency_ratio' | 'ltd_ratio' | 'npl_ratio' | 'coverage_ratio';
 
 const SIZE_BUCKETS: Record<string, [number, number | null]> = {
   nano:      [0,            100_000],
@@ -131,11 +146,18 @@ const SIZE_BUCKETS: Record<string, [number, number | null]> = {
 };
 
 const SORT_COLUMN: Record<SortField, string> = {
-  total_assets:   'total_assets',
-  total_deposits: 'total_deposits',
-  total_equity:   'total_equity',
-  net_income:     'net_income',
-  equity_ratio:   'CASE WHEN total_assets > 0 THEN total_equity::float / total_assets ELSE 0 END',
+  total_assets:     'total_assets',
+  total_deposits:   'total_deposits',
+  total_equity:     'total_equity',
+  net_income:       'net_income',
+  equity_ratio:     'CASE WHEN total_assets > 0 THEN total_equity::float / total_assets ELSE 0 END',
+  roa:              'roa',
+  roe:              'roe',
+  nim:              'nim',
+  efficiency_ratio: 'efficiency_ratio',
+  ltd_ratio:        'ltd_ratio',
+  npl_ratio:        'npl_ratio',
+  coverage_ratio:   'coverage_ratio',
 };
 
 export async function advancedSearch(params: {
@@ -146,6 +168,10 @@ export async function advancedSearch(params: {
   maxAssets: string;
   minEquityRatio: string;
   profitableOnly: string;
+  minRoa: string;
+  maxEfficiency: string;
+  minNim: string;
+  maxNpl: string;
   sort: SortField;
   sortDir: 'asc' | 'desc';
   page: number;
@@ -173,6 +199,11 @@ export async function advancedSearch(params: {
   if (maxA != null) conditions.push(`total_assets <= ${addParam(maxA)}`);
 
   if (params.profitableOnly === '1') conditions.push(`net_income > 0`);
+
+  if (params.minRoa)        conditions.push(`roa              >= ${addParam(Number(params.minRoa)        / 100)}`);
+  if (params.maxEfficiency) conditions.push(`efficiency_ratio <= ${addParam(Number(params.maxEfficiency) / 100)}`);
+  if (params.minNim)        conditions.push(`nim              >= ${addParam(Number(params.minNim)        / 100)}`);
+  if (params.maxNpl)        conditions.push(`npl_ratio        <= ${addParam(Number(params.maxNpl)        / 100)}`);
 
   if (params.minEquityRatio) {
     const pct = Number(params.minEquityRatio) / 100;
@@ -205,27 +236,34 @@ export async function browseIndex(
   state: string,
   page: number,
   limit = 50,
+  sort: SortField = 'total_assets',
+  sortDir: 'asc' | 'desc' = 'desc',
 ): Promise<{ results: IndexRow[]; total: number }> {
   const db = sql();
   const offset = (page - 1) * limit;
+  const orderCol = SORT_COLUMN[sort] ?? 'total_assets';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
-  const rows = state
-    ? await db`
-        SELECT *, COUNT(*) OVER() AS total_count
-        FROM institutions
-        WHERE state = ${state}
-        ORDER BY total_assets DESC NULLS LAST
-        LIMIT ${limit} OFFSET ${offset}
-      `
-    : await db`
-        SELECT *, COUNT(*) OVER() AS total_count
-        FROM institutions
-        ORDER BY total_assets DESC NULLS LAST
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+  const values: unknown[] = [];
+  function addParam(v: unknown) { values.push(v); return `$${values.length}`; }
 
-  const total = rows.length > 0 ? parseInt(String((rows[0] as Record<string, unknown>).total_count), 10) : 0;
-  return { results: (rows as Record<string, unknown>[]).map(toRow), total };
+  const where = state ? `WHERE state = ${addParam(state)}` : '';
+  values.push(limit, offset);
+  const lIdx = values.length - 1;
+  const oIdx = values.length;
+
+  const query = `
+    SELECT *, COUNT(*) OVER() AS total_count
+    FROM institutions
+    ${where}
+    ORDER BY ${orderCol} ${dir} NULLS LAST
+    LIMIT $${lIdx} OFFSET $${oIdx}
+  `;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = await (db as any)(query, ...values) as (Record<string, unknown> & { total_count: string })[];
+  const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
+  return { results: rows.map(toRow), total };
 }
 
 export async function getStateCounts(): Promise<Record<string, number>> {

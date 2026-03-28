@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { advancedSearch, type SortField } from "@/lib/db";
-import { formatDollars } from "@/lib/format";
+import { formatDollars, formatPct } from "@/lib/format";
+import type { IndexRow } from "@/lib/db";
 
 export const runtime = 'nodejs';
 
@@ -21,11 +22,18 @@ const SIZE_OPTIONS = [
 ];
 
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
-  { value: "total_assets",   label: "Total Assets" },
-  { value: "total_deposits", label: "Total Deposits" },
-  { value: "total_equity",   label: "Total Equity" },
-  { value: "net_income",     label: "Net Income" },
-  { value: "equity_ratio",   label: "Equity / Assets" },
+  { value: "total_assets",     label: "Total Assets" },
+  { value: "total_deposits",   label: "Total Deposits" },
+  { value: "total_equity",     label: "Total Equity" },
+  { value: "net_income",       label: "Net Income" },
+  { value: "equity_ratio",     label: "Eq / Assets" },
+  { value: "roa",              label: "ROA" },
+  { value: "roe",              label: "ROE" },
+  { value: "nim",              label: "NIM" },
+  { value: "efficiency_ratio", label: "Efficiency Ratio" },
+  { value: "ltd_ratio",        label: "LTD Ratio" },
+  { value: "npl_ratio",        label: "NPL Ratio" },
+  { value: "coverage_ratio",   label: "Coverage Ratio" },
 ];
 
 const EQ_RATIO_OPTIONS = [
@@ -36,6 +44,78 @@ const EQ_RATIO_OPTIONS = [
   { value: "12", label: "> 12%" },
   { value: "15", label: "> 15%" },
 ];
+
+const ROA_OPTIONS = [
+  { value: "",    label: "Any" },
+  { value: "0.5", label: "> 0.5%" },
+  { value: "1",   label: "> 1.0%" },
+  { value: "1.5", label: "> 1.5%" },
+  { value: "2",   label: "> 2.0%" },
+];
+
+const EFFICIENCY_OPTIONS = [
+  { value: "",   label: "Any" },
+  { value: "50", label: "< 50%" },
+  { value: "60", label: "< 60%" },
+  { value: "70", label: "< 70%" },
+  { value: "80", label: "< 80%" },
+];
+
+const NIM_OPTIONS = [
+  { value: "",  label: "Any" },
+  { value: "2", label: "> 2%" },
+  { value: "3", label: "> 3%" },
+  { value: "4", label: "> 4%" },
+  { value: "5", label: "> 5%" },
+];
+
+const NPL_OPTIONS = [
+  { value: "",  label: "Any" },
+  { value: "1", label: "< 1%" },
+  { value: "2", label: "< 2%" },
+  { value: "5", label: "< 5%" },
+];
+
+// ── Column picker ────────────────────────────────────────────────────────────
+type ColDef = { id: string; label: string; sort: SortField; right: boolean };
+const COLS_AVAILABLE: ColDef[] = [
+  { id: "total_assets",     label: "Assets",      sort: "total_assets",     right: true },
+  { id: "total_deposits",   label: "Deposits",    sort: "total_deposits",   right: true },
+  { id: "total_equity",     label: "Equity",      sort: "total_equity",     right: true },
+  { id: "eq_ratio",         label: "Eq/Assets",   sort: "equity_ratio",     right: true },
+  { id: "net_income",       label: "Net Income",  sort: "net_income",       right: true },
+  { id: "roa",              label: "ROA",         sort: "roa",              right: true },
+  { id: "roe",              label: "ROE",         sort: "roe",              right: true },
+  { id: "nim",              label: "NIM",         sort: "nim",              right: true },
+  { id: "efficiency_ratio", label: "Efficiency",  sort: "efficiency_ratio", right: true },
+  { id: "ltd_ratio",        label: "LTD",         sort: "ltd_ratio",        right: true },
+  { id: "npl_ratio",        label: "NPL Ratio",   sort: "npl_ratio",        right: true },
+  { id: "coverage_ratio",   label: "Coverage",    sort: "coverage_ratio",   right: true },
+];
+const DEFAULT_COLS = ["total_assets", "total_deposits", "total_equity", "eq_ratio", "net_income"];
+
+function colCell(id: string, r: IndexRow): React.ReactNode {
+  if (id === "total_assets")   return r.total_assets   ? formatDollars(Number(r.total_assets))   : "—";
+  if (id === "total_deposits") return r.total_deposits ? formatDollars(Number(r.total_deposits)) : "—";
+  if (id === "total_equity")   return r.total_equity   ? formatDollars(Number(r.total_equity))   : "—";
+  if (id === "net_income") {
+    if (!r.net_income) return "—";
+    const n = Number(r.net_income);
+    return <span className={n < 0 ? "text-red-600" : ""}>{formatDollars(n)}</span>;
+  }
+  if (id === "eq_ratio") {
+    const a = Number(r.total_assets), e = Number(r.total_equity);
+    return a > 0 && r.total_equity ? `${((e / a) * 100).toFixed(1)}%` : "—";
+  }
+  if (id === "roa")              return r.roa              ? formatPct(Number(r.roa), 2)              : "—";
+  if (id === "roe")              return r.roe              ? formatPct(Number(r.roe), 1)              : "—";
+  if (id === "nim")              return r.nim              ? formatPct(Number(r.nim), 2)              : "—";
+  if (id === "efficiency_ratio") return r.efficiency_ratio ? formatPct(Number(r.efficiency_ratio), 1) : "—";
+  if (id === "ltd_ratio")        return r.ltd_ratio        ? formatPct(Number(r.ltd_ratio), 1)        : "—";
+  if (id === "npl_ratio")        return r.npl_ratio        ? formatPct(Number(r.npl_ratio), 2)        : "—";
+  if (id === "coverage_ratio")   return r.coverage_ratio   ? formatPct(Number(r.coverage_ratio), 0)   : "—";
+  return "—";
+}
 
 const LIMIT = 50;
 
@@ -53,16 +133,24 @@ export default async function SearchPage({
   const maxAssets       = p.maxAssets ?? "";
   const minEquityRatio  = p.minEqRatio ?? "";
   const profitableOnly  = p.profitable ?? "";
+  const minRoa          = p.minRoa ?? "";
+  const maxEfficiency   = p.maxEff ?? "";
+  const minNim          = p.minNim ?? "";
+  const maxNpl          = p.maxNpl ?? "";
   const sort            = (SORT_OPTIONS.find(o => o.value === p.sort)?.value ?? "total_assets") as SortField;
   const sortDir         = p.dir === "asc" ? "asc" : "desc";
   const page            = Math.max(1, parseInt(p.page ?? "1", 10));
 
-  const hasFilters = !!(q || state || size || minAssets || maxAssets || minEquityRatio || profitableOnly);
+  // Column picker
+  const rawCols = p.cols ? p.cols.split(",").filter(c => COLS_AVAILABLE.some(d => d.id === c)) : null;
+  const activeCols = rawCols ?? DEFAULT_COLS;
+
+  const hasFilters = !!(q || state || size || minAssets || maxAssets || minEquityRatio || profitableOnly || minRoa || maxEfficiency || minNim || maxNpl);
 
   const { results, total } = await (async () => {
     if (!hasFilters) return { results: [], total: 0 };
     try {
-      return await advancedSearch({ q, state, size, minAssets, maxAssets, minEquityRatio, profitableOnly, sort, sortDir, page, limit: LIMIT });
+      return await advancedSearch({ q, state, size, minAssets, maxAssets, minEquityRatio, profitableOnly, minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
     } catch {
       return { results: [], total: 0 };
     }
@@ -79,9 +167,14 @@ export default async function SearchPage({
     if (maxAssets)      sp.set("maxAssets", maxAssets);
     if (minEquityRatio) sp.set("minEqRatio", minEquityRatio);
     if (profitableOnly) sp.set("profitable", profitableOnly);
+    if (minRoa)         sp.set("minRoa", minRoa);
+    if (maxEfficiency)  sp.set("maxEff", maxEfficiency);
+    if (minNim)         sp.set("minNim", minNim);
+    if (maxNpl)         sp.set("maxNpl", maxNpl);
     if (sort !== "total_assets") sp.set("sort", sort);
     if (sortDir !== "desc")      sp.set("dir", sortDir);
     sp.set("page", String(page));
+    if (activeCols !== DEFAULT_COLS) sp.set("cols", activeCols.join(","));
     for (const [k, v] of Object.entries(overrides)) sp.set(k, String(v));
     return `/search?${sp.toString()}`;
   }
@@ -94,6 +187,13 @@ export default async function SearchPage({
   function sortIcon(field: SortField) {
     if (sort !== field) return <span className="text-white/30 ml-1">↕</span>;
     return <span className="ml-1">{sortDir === "desc" ? "↓" : "↑"}</span>;
+  }
+
+  function toggleColUrl(colId: string) {
+    const next = activeCols.includes(colId)
+      ? activeCols.filter(c => c !== colId)
+      : [...activeCols, colId];
+    return buildUrl({ cols: next.join(","), page: 1 });
   }
 
   return (
@@ -131,46 +231,30 @@ export default async function SearchPage({
           )}
         </div>
 
-        {/* Row 2: advanced filters */}
+        {/* Row 2: size / sort / direction / equity ratio / profitable */}
         <div className="flex flex-wrap gap-3 pt-1 border-t border-gray-100">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Asset Size</label>
-            <select
-              name="size"
-              defaultValue={size}
-              className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
-            >
+            <select name="size" defaultValue={size} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
               {SIZE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Sort By</label>
-            <select
-              name="sort"
-              defaultValue={sort}
-              className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
-            >
+            <select name="sort" defaultValue={sort} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
               {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Direction</label>
-            <select
-              name="dir"
-              defaultValue={sortDir}
-              className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
-            >
+            <select name="dir" defaultValue={sortDir} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
               <option value="desc">Highest first</option>
               <option value="asc">Lowest first</option>
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Min Equity / Assets</label>
-            <select
-              name="minEqRatio"
-              defaultValue={minEquityRatio}
-              className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
-            >
+            <select name="minEqRatio" defaultValue={minEquityRatio} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
               {EQ_RATIO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -188,6 +272,39 @@ export default async function SearchPage({
             </label>
           </div>
         </div>
+
+        {/* Row 3: financial quality filters */}
+        <div className="flex flex-wrap gap-3 pt-1 border-t border-gray-100">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Min ROA</label>
+            <select name="minRoa" defaultValue={minRoa} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
+              {ROA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Max Efficiency Ratio</label>
+            <select name="maxEff" defaultValue={maxEfficiency} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
+              {EFFICIENCY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Min NIM</label>
+            <select name="minNim" defaultValue={minNim} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
+              {NIM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Max NPL Ratio</label>
+            <select name="maxNpl" defaultValue={maxNpl} className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]">
+              {NPL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Preserve cols param across form submissions */}
+        {activeCols !== DEFAULT_COLS && (
+          <input type="hidden" name="cols" value={activeCols.join(",")} />
+        )}
       </form>
 
       {/* Results header */}
@@ -204,6 +321,29 @@ export default async function SearchPage({
         </div>
       )}
 
+      {/* Column picker */}
+      {(hasFilters || results.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <span className="text-xs text-gray-400 mr-0.5">Columns:</span>
+          {COLS_AVAILABLE.map(col => {
+            const active = activeCols.includes(col.id);
+            return (
+              <Link
+                key={col.id}
+                href={toggleColUrl(col.id)}
+                className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                  active
+                    ? "bg-[#0a2342] text-white border-[#0a2342]"
+                    : "bg-white text-gray-500 border-gray-300 hover:border-gray-400 hover:text-gray-700"
+                }`}
+              >
+                {col.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       {/* Results table */}
       {results.length > 0 && (
         <div className="bg-white border border-gray-200 rounded overflow-x-auto">
@@ -214,64 +354,35 @@ export default async function SearchPage({
                 <th className="text-left px-4 py-2.5">Institution</th>
                 <th className="text-left px-4 py-2.5">City, State</th>
                 <th className="text-left px-4 py-2.5">FDIC Cert</th>
-                <th className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c]">
-                  <Link href={sortUrl("total_assets")}>Assets{sortIcon("total_assets")}</Link>
-                </th>
-                <th className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c]">
-                  <Link href={sortUrl("total_deposits")}>Deposits{sortIcon("total_deposits")}</Link>
-                </th>
-                <th className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c]">
-                  <Link href={sortUrl("total_equity")}>Equity{sortIcon("total_equity")}</Link>
-                </th>
-                <th className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c]">
-                  <Link href={sortUrl("equity_ratio")}>Eq/Assets{sortIcon("equity_ratio")}</Link>
-                </th>
-                <th className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c]">
-                  <Link href={sortUrl("net_income")}>Net Income{sortIcon("net_income")}</Link>
-                </th>
+                {COLS_AVAILABLE.filter(c => activeCols.includes(c.id)).map(col => (
+                  <th key={col.id} className="text-right px-4 py-2.5 cursor-pointer hover:text-[#c9a84c] whitespace-nowrap">
+                    <Link href={sortUrl(col.sort)}>{col.label}{sortIcon(col.sort)}</Link>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {results.map((r, i) => {
-                const assets = r.total_assets ? Number(r.total_assets) : 0;
-                const equity = r.total_equity ? Number(r.total_equity) : 0;
-                const eqRatio = assets > 0 ? (equity / assets) * 100 : null;
-                return (
-                  <tr key={r.idrssd} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">
-                      {((page - 1) * LIMIT + i + 1).toLocaleString()}
+              {results.map((r, i) => (
+                <tr key={r.idrssd} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">
+                    {((page - 1) * LIMIT + i + 1).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 max-w-xs">
+                    <Link href={`/bank/${r.idrssd}`} className="text-[#0a2342] hover:text-[#c9a84c] transition-colors font-medium truncate block">
+                      {r.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
+                    {r.city}{r.city && r.state ? ", " : ""}{r.state}
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{r.fdic_cert}</td>
+                  {COLS_AVAILABLE.filter(c => activeCols.includes(c.id)).map(col => (
+                    <td key={col.id} className="px-4 py-2.5 text-right font-mono text-sm">
+                      {colCell(col.id, r)}
                     </td>
-                    <td className="px-4 py-2.5 max-w-xs">
-                      <Link href={`/bank/${r.idrssd}`} className="text-[#0a2342] hover:text-[#c9a84c] transition-colors font-medium truncate block">
-                        {r.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
-                      {r.city}{r.city && r.state ? ", " : ""}{r.state}
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{r.fdic_cert}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-sm">
-                      {r.total_assets ? formatDollars(Number(r.total_assets)) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-sm">
-                      {r.total_deposits ? formatDollars(Number(r.total_deposits)) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-sm">
-                      {r.total_equity ? formatDollars(Number(r.total_equity)) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-sm">
-                      {eqRatio != null ? `${eqRatio.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-sm">
-                      {r.net_income ? (
-                        <span className={Number(r.net_income) < 0 ? "text-red-600" : ""}>
-                          {formatDollars(Number(r.net_income))}
-                        </span>
-                      ) : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

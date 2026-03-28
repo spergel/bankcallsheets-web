@@ -11,6 +11,11 @@ export function formatDollars(thousands: number): string {
   return `$${v.toLocaleString()}`;
 }
 
+/** Format a decimal ratio as a percentage string, e.g. 0.0125 → "1.25%" */
+export function formatPct(ratio: number, digits = 1): string {
+  return `${(ratio * 100).toFixed(digits)}%`;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",

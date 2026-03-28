@@ -106,7 +106,7 @@ export default async function HomePage() {
             </table>
           ) : (
             <div className="bg-white border border-gray-200 rounded p-8 text-center text-gray-400 text-sm">
-              Run <code className="bg-gray-100 px-1 rounded">npm run ingest</code> to load data.
+              No data available.
             </div>
           )}
         </div>
