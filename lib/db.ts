@@ -1,12 +1,30 @@
 import { neon } from '@neondatabase/serverless';
+import { Client } from 'pg';
 
-function sql() {
+function cleanUrl(): string {
   const raw = process.env.DATABASE_URL;
   if (!raw) throw new Error('DATABASE_URL is not set');
-  // Strip channel_binding — unsupported by the neon HTTP driver.
   const u = new URL(raw);
   u.searchParams.delete('channel_binding');
-  return neon(u.toString());
+  return u.toString();
+}
+
+function sql() {
+  return neon(cleanUrl());
+}
+
+// For parameterized dynamic queries — neon v1 only supports tagged templates.
+// pg works fine against Neon's pooler in Node.js runtime.
+async function pgQuery(query: string, values: unknown[]): Promise<Record<string, unknown>[]> {
+  const client = new Client({ connectionString: cleanUrl() });
+  await client.connect();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { rows } = await client.query(query, values as any[]);
+    return rows;
+  } finally {
+    await client.end().catch(() => {});
+  }
 }
 
 export type IndexRow = {
@@ -98,7 +116,6 @@ export async function searchIndex(
   limit = 25,
 ): Promise<{ results: IndexRow[]; total: number }> {
   if (!q && !state) return { results: [], total: 0 };
-  const db = sql();
   const offset = (page - 1) * limit;
 
   // Build dynamic WHERE conditions
@@ -132,8 +149,7 @@ export async function searchIndex(
     LIMIT $${limitIdx} OFFSET $${offsetIdx}
   `;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, params) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await pgQuery(query, params) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
@@ -183,7 +199,6 @@ export async function advancedSearch(params: {
 }): Promise<{ results: IndexRow[]; total: number }> {
   const limit  = params.limit ?? 50;
   const offset = (params.page - 1) * limit;
-  const db = sql();
 
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -230,8 +245,7 @@ export async function advancedSearch(params: {
     LIMIT $${lIdx} OFFSET $${oIdx}
   `;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, values) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await pgQuery(query, values) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
@@ -243,7 +257,6 @@ export async function browseIndex(
   sort: SortField = 'total_assets',
   sortDir: 'asc' | 'desc' = 'desc',
 ): Promise<{ results: IndexRow[]; total: number }> {
-  const db = sql();
   const offset = (page - 1) * limit;
   const orderCol = SORT_COLUMN[sort] ?? 'total_assets';
   const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
@@ -264,8 +277,7 @@ export async function browseIndex(
     LIMIT $${lIdx} OFFSET $${oIdx}
   `;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, values) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await pgQuery(query, values) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
