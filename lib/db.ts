@@ -183,6 +183,8 @@ const SORT_COLUMN: Record<SortField, string> = {
 export async function advancedSearch(params: {
   q: string;
   state: string;
+  city: string;
+  filingType: string;
   size: string;
   minAssets: string;
   maxAssets: string;
@@ -207,9 +209,11 @@ export async function advancedSearch(params: {
 
   if (params.q) {
     const p = `%${params.q}%`;
-    conditions.push(`(name ILIKE ${addParam(p)} OR fdic_cert = ${addParam(params.q)} OR aba_routing = ${addParam(params.q)})`);
+    conditions.push(`(name ILIKE ${addParam(p)} OR fdic_cert = ${addParam(params.q)} OR aba_routing = ${addParam(params.q)} OR idrssd = ${addParam(params.q)} OR zip = ${addParam(params.q)} OR city ILIKE ${addParam(p)})`);
   }
-  if (params.state)  conditions.push(`state = ${addParam(params.state)}`);
+  if (params.state)      conditions.push(`state = ${addParam(params.state)}`);
+  if (params.city)       conditions.push(`city ILIKE ${addParam(`%${params.city}%`)}`);
+  if (params.filingType) conditions.push(`filing_type = ${addParam(params.filingType)}`);
 
   const bucket = params.size ? SIZE_BUCKETS[params.size] : null;
   const minA = params.minAssets ? Number(params.minAssets) : (bucket ? bucket[0] : null);

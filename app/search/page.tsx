@@ -128,6 +128,8 @@ export default async function SearchPage({
 
   const q               = p.q?.trim() ?? "";
   const state           = p.state?.trim().toUpperCase() ?? "";
+  const city            = p.city?.trim() ?? "";
+  const filingType      = p.filingType ?? "";
   const size            = p.size ?? "";
   const minAssets       = p.minAssets ?? "";
   const maxAssets       = p.maxAssets ?? "";
@@ -145,12 +147,12 @@ export default async function SearchPage({
   const rawCols = p.cols ? p.cols.split(",").filter(c => COLS_AVAILABLE.some(d => d.id === c)) : null;
   const activeCols = rawCols ?? DEFAULT_COLS;
 
-  const hasFilters = !!(q || state || size || minAssets || maxAssets || minEquityRatio || profitableOnly || minRoa || maxEfficiency || minNim || maxNpl);
+  const hasFilters = !!(q || state || city || filingType || size || minAssets || maxAssets || minEquityRatio || profitableOnly || minRoa || maxEfficiency || minNim || maxNpl);
 
   const { results, total } = await (async () => {
     if (!hasFilters) return { results: [], total: 0 };
     try {
-      return await advancedSearch({ q, state, size, minAssets, maxAssets, minEquityRatio, profitableOnly, minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
+      return await advancedSearch({ q, state, city, filingType, size, minAssets, maxAssets, minEquityRatio, profitableOnly, minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
     } catch (e) {
       console.error('[search] advancedSearch error:', e);
       return { results: [], total: 0 };
@@ -163,6 +165,8 @@ export default async function SearchPage({
     const sp = new URLSearchParams();
     if (q)              sp.set("q", q);
     if (state)          sp.set("state", state);
+    if (city)           sp.set("city", city);
+    if (filingType)     sp.set("filingType", filingType);
     if (size)           sp.set("size", size);
     if (minAssets)      sp.set("minAssets", minAssets);
     if (maxAssets)      sp.set("maxAssets", maxAssets);
@@ -203,13 +207,19 @@ export default async function SearchPage({
       <form method="GET" action="/search" className="bg-white border border-gray-200 rounded p-5 mb-6 space-y-4">
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Advanced Search</div>
 
-        {/* Row 1: name + state + submit */}
+        {/* Row 1: name + city + state + filing type + submit */}
         <div className="flex flex-wrap gap-3">
           <input
             name="q"
             defaultValue={q}
-            placeholder="Bank name, FDIC cert, or ABA routing…"
+            placeholder="Name, FDIC cert, ABA routing, ZIP, or IDRSSD…"
             className="flex-1 min-w-56 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
+          />
+          <input
+            name="city"
+            defaultValue={city}
+            placeholder="City…"
+            className="w-36 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
           />
           <select
             name="state"
@@ -218,6 +228,16 @@ export default async function SearchPage({
           >
             <option value="">All States</option>
             {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            name="filingType"
+            defaultValue={filingType}
+            className="px-3 py-2 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-[#0a2342]"
+          >
+            <option value="">All types</option>
+            <option value="051">FFIEC 051 — Community</option>
+            <option value="041">FFIEC 041 — Domestic</option>
+            <option value="031">FFIEC 031 — Large / Intl</option>
           </select>
           <button
             type="submit"
