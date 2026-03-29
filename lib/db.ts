@@ -1,8 +1,12 @@
 import { neon } from '@neondatabase/serverless';
 
 function sql() {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-  return neon(process.env.DATABASE_URL);
+  const raw = process.env.DATABASE_URL;
+  if (!raw) throw new Error('DATABASE_URL is not set');
+  // Strip channel_binding — unsupported by the neon HTTP driver.
+  const u = new URL(raw);
+  u.searchParams.delete('channel_binding');
+  return neon(u.toString());
 }
 
 export type IndexRow = {

@@ -151,7 +151,8 @@ export default async function SearchPage({
     if (!hasFilters) return { results: [], total: 0 };
     try {
       return await advancedSearch({ q, state, size, minAssets, maxAssets, minEquityRatio, profitableOnly, minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
-    } catch {
+    } catch (e) {
+      console.error('[search] advancedSearch error:', e);
       return { results: [], total: 0 };
     }
   })();
