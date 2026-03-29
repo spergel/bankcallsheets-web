@@ -59,6 +59,16 @@ export type IndexRow = {
   interest_income:  string;
   nonint_income:    string;
   loan_to_asset:    string;
+  // FDIC-sourced
+  tier1_ratio:         string;
+  total_capital_ratio: string;
+  leverage_ratio:      string;
+  cre_loans:           string;
+  construction_loans:  string;
+  ci_loans:            string;
+  residential_loans:   string;
+  consumer_loans:      string;
+  nco_rate:            string;
 };
 
 function toRow(r: Record<string, unknown>): IndexRow {
@@ -94,6 +104,15 @@ function toRow(r: Record<string, unknown>): IndexRow {
     interest_income:  r.interest_income  != null ? String(r.interest_income)  : '',
     nonint_income:    r.nonint_income    != null ? String(r.nonint_income)    : '',
     loan_to_asset:    r.loan_to_asset    != null ? String(r.loan_to_asset)    : '',
+    tier1_ratio:         r.tier1_ratio         != null ? String(r.tier1_ratio)         : '',
+    total_capital_ratio: r.total_capital_ratio != null ? String(r.total_capital_ratio) : '',
+    leverage_ratio:      r.leverage_ratio      != null ? String(r.leverage_ratio)      : '',
+    cre_loans:           r.cre_loans           != null ? String(r.cre_loans)           : '',
+    construction_loans:  r.construction_loans  != null ? String(r.construction_loans)  : '',
+    ci_loans:            r.ci_loans            != null ? String(r.ci_loans)            : '',
+    residential_loans:   r.residential_loans   != null ? String(r.residential_loans)   : '',
+    consumer_loans:      r.consumer_loans      != null ? String(r.consumer_loans)      : '',
+    nco_rate:            r.nco_rate            != null ? String(r.nco_rate)            : '',
   };
 }
 
@@ -172,7 +191,9 @@ export async function searchIndex(
 
 export type SortField = 'total_assets' | 'total_deposits' | 'total_equity' | 'net_income' | 'equity_ratio'
   | 'roa' | 'roe' | 'nim' | 'efficiency_ratio' | 'ltd_ratio' | 'npl_ratio' | 'coverage_ratio'
-  | 'gross_loans' | 'securities' | 'oreo' | 'alll' | 'provision' | 'interest_income' | 'nonint_income' | 'loan_to_asset';
+  | 'gross_loans' | 'securities' | 'oreo' | 'alll' | 'provision' | 'interest_income' | 'nonint_income' | 'loan_to_asset'
+  | 'tier1_ratio' | 'total_capital_ratio' | 'leverage_ratio'
+  | 'cre_loans' | 'construction_loans' | 'ci_loans' | 'residential_loans' | 'consumer_loans' | 'nco_rate';
 
 const SIZE_BUCKETS: Record<string, [number, number | null]> = {
   nano:      [0,            100_000],
@@ -203,6 +224,15 @@ const SORT_COLUMN: Record<SortField, string> = {
   interest_income:  'interest_income',
   nonint_income:    'nonint_income',
   loan_to_asset:    'loan_to_asset',
+  tier1_ratio:         'tier1_ratio',
+  total_capital_ratio: 'total_capital_ratio',
+  leverage_ratio:      'leverage_ratio',
+  cre_loans:           'cre_loans',
+  construction_loans:  'construction_loans',
+  ci_loans:            'ci_loans',
+  residential_loans:   'residential_loans',
+  consumer_loans:      'consumer_loans',
+  nco_rate:            'nco_rate',
 };
 
 export async function advancedSearch(params: {

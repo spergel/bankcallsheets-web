@@ -2,11 +2,12 @@ import MetricsGrid from "@/components/MetricsGrid";
 import TrendChart from "@/components/TrendChart";
 import { delta, formatPeriodLabel, type DerivedPeriod } from "@/lib/bankMetrics";
 import { formatDollars } from "@/lib/format";
+import type { FdicFinancials } from "@/lib/fdic";
 
 function fmtDollars(v: number | null) { return v != null ? formatDollars(v) : "—"; }
 function fmtPct(v: number | null)     { return v != null ? `${v.toFixed(2)}%` : "—"; }
 
-export default function LoansTab({ periods }: { periods: DerivedPeriod[] }) {
+export default function LoansTab({ periods, fdicFinancials = [] }: { periods: DerivedPeriod[]; fdicFinancials?: FdicFinancials[] }) {
   const latest = periods[periods.length - 1];
   const prevQ  = periods[periods.length - 2] ?? null;
   const prevY  = periods.length >= 5 ? periods[periods.length - 5] : null;
@@ -83,11 +84,87 @@ export default function LoansTab({ periods }: { periods: DerivedPeriod[] }) {
           Loan Portfolio — {latest?.period ? formatPeriodLabel(latest.period) : ""}
         </h2>
         <MetricsGrid metrics={metrics} />
-        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-          <strong>Data note:</strong> Loan composition by type (C&amp;I, CRE, residential, consumer) is
-          reported on Schedule RC-C, which is not in the FFIEC bulk data subset used here.
-          Asset composition below uses available balance sheet totals.
-        </div>
+        {(() => {
+          const f = fdicFinancials[0];
+          if (!f || (!f.lnci && !f.lnre && !f.lncon)) return (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+              <strong>Data note:</strong> Loan composition by type (C&amp;I, CRE, residential, consumer) is
+              reported on Schedule RC-C, which is not in the FFIEC bulk data subset. FDIC data unavailable.
+            </div>
+          );
+          const dt = f.repdte ? `${f.repdte.slice(0,4)}-${f.repdte.slice(4,6)}-${f.repdte.slice(6,8)}` : '';
+          const totalLoans = f.lnlsnet || 1;
+          const slices = [
+            { label: "CRE (Nonfarm Nonresidential)", value: f.lnrenres, color: "#0a2342", note: ">300% Tier 1 = flag" },
+            { label: "Residential (1-4 Family)",     value: f.lnreres,  color: "#1d4ed8" },
+            { label: "Construction & Land",          value: f.lnrecons, color: "#dc2626", note: "High-risk" },
+            { label: "Multifamily",                  value: f.lnremult, color: "#7c3aed" },
+            { label: "C&I Loans",                    value: f.lnci,     color: "#c9a84c" },
+            { label: "Consumer / Individual",        value: f.lncon,    color: "#16a34a" },
+          ].filter(s => s.value > 0);
+          const covered = slices.reduce((s, x) => s + x.value, 0);
+          const otherLoans = totalLoans > covered ? totalLoans - covered : 0;
+          return (
+            <div className="mt-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Loan Composition — {dt} <span className="text-gray-400 normal-case font-normal">(via FDIC)</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white border border-gray-200 rounded overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#0a2342]/5 border-b border-gray-200">
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#0a2342]">Category</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#0a2342]">Balance</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#0a2342]">% of Loans</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slices.map(s => (
+                        <tr key={s.label} className="border-t border-gray-100">
+                          <td className="px-4 py-2.5 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
+                            <span className="text-xs text-gray-700">{s.label}</span>
+                            {s.note && <span className="text-xs text-gray-400 italic">{s.note}</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-xs">{fmtDollars(s.value)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-xs">
+                            {`${(s.value / totalLoans * 100).toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                      {otherLoans > 0 && (
+                        <tr className="border-t border-gray-100">
+                          <td className="px-4 py-2.5 text-xs text-gray-500">Other loans</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-xs">{fmtDollars(otherLoans)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-xs">{`${(otherLoans / totalLoans * 100).toFixed(1)}%`}</td>
+                        </tr>
+                      )}
+                      <tr className="border-t-2 border-gray-300 bg-gray-50">
+                        <td className="px-4 py-2.5 text-xs font-semibold text-gray-700">Total Net Loans</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold">{fmtDollars(totalLoans)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-white border border-gray-200 rounded p-4 flex flex-col justify-center gap-3">
+                  {slices.map(s => (
+                    <div key={s.label}>
+                      <div className="flex justify-between text-xs text-gray-600 mb-0.5">
+                        <span>{s.label}</span>
+                        <span className="font-mono">{`${(s.value / totalLoans * 100).toFixed(1)}%`}</span>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${(s.value / totalLoans * 100)}%`, background: s.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {assetSlices.length > 0 && (

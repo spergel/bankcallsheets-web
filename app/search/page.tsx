@@ -34,7 +34,16 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: "provision",        label: "Provision" },
   { value: "oreo",             label: "OREO" },
   { value: "alll",             label: "ALLL" },
-  { value: "loan_to_asset",    label: "Loan / Asset" },
+  { value: "loan_to_asset",       label: "Loan / Asset" },
+  { value: "tier1_ratio",         label: "Tier 1 Ratio" },
+  { value: "total_capital_ratio", label: "Total Capital Ratio" },
+  { value: "leverage_ratio",      label: "Leverage Ratio" },
+  { value: "cre_loans",           label: "CRE Loans" },
+  { value: "construction_loans",  label: "Construction Loans" },
+  { value: "ci_loans",            label: "C&I Loans" },
+  { value: "residential_loans",   label: "Residential Loans" },
+  { value: "consumer_loans",      label: "Consumer Loans" },
+  { value: "nco_rate",            label: "NCO Rate" },
   { value: "roa",              label: "ROA" },
   { value: "roe",              label: "ROE" },
   { value: "nim",              label: "NIM" },
@@ -100,6 +109,15 @@ const COLS_AVAILABLE: ColDef[] = [
   { id: "oreo",             label: "OREO",          sort: "oreo",             right: true },
   { id: "alll",             label: "ALLL",          sort: "alll",             right: true },
   { id: "loan_to_asset",    label: "Loan/Asset",    sort: "loan_to_asset",    right: true },
+  { id: "tier1_ratio",         label: "Tier 1",        sort: "tier1_ratio",         right: true },
+  { id: "total_capital_ratio", label: "Total Cap",     sort: "total_capital_ratio", right: true },
+  { id: "leverage_ratio",      label: "Leverage",      sort: "leverage_ratio",      right: true },
+  { id: "cre_loans",           label: "CRE Loans",     sort: "cre_loans",           right: true },
+  { id: "construction_loans",  label: "Construction",  sort: "construction_loans",  right: true },
+  { id: "ci_loans",            label: "C&I Loans",     sort: "ci_loans",            right: true },
+  { id: "residential_loans",   label: "Residential",   sort: "residential_loans",   right: true },
+  { id: "consumer_loans",      label: "Consumer",      sort: "consumer_loans",      right: true },
+  { id: "nco_rate",            label: "NCO Rate",      sort: "nco_rate",            right: true },
   { id: "roa",              label: "ROA",           sort: "roa",              right: true },
   { id: "roe",              label: "ROE",           sort: "roe",              right: true },
   { id: "nim",              label: "NIM",           sort: "nim",              right: true },
@@ -133,7 +151,20 @@ function colCell(id: string, r: IndexRow): React.ReactNode {
   }
   if (id === "oreo")            return r.oreo            ? formatDollars(Number(r.oreo))            : "—";
   if (id === "alll")            return r.alll            ? formatDollars(Number(r.alll))            : "—";
-  if (id === "loan_to_asset")   return r.loan_to_asset   ? formatPct(Number(r.loan_to_asset), 1)    : "—";
+  if (id === "loan_to_asset")      return r.loan_to_asset      ? formatPct(Number(r.loan_to_asset), 1)      : "—";
+  if (id === "tier1_ratio") {
+    if (!r.tier1_ratio) return "—";
+    const v = Number(r.tier1_ratio);
+    return <span className={v < 6 ? "text-red-600" : v < 8 ? "text-amber-600" : "text-green-700"}>{v.toFixed(2)}%</span>;
+  }
+  if (id === "total_capital_ratio") return r.total_capital_ratio ? `${Number(r.total_capital_ratio).toFixed(2)}%` : "—";
+  if (id === "leverage_ratio")      return r.leverage_ratio      ? `${Number(r.leverage_ratio).toFixed(2)}%`      : "—";
+  if (id === "cre_loans")           return r.cre_loans           ? formatDollars(Number(r.cre_loans))            : "—";
+  if (id === "construction_loans")  return r.construction_loans  ? formatDollars(Number(r.construction_loans))   : "—";
+  if (id === "ci_loans")            return r.ci_loans            ? formatDollars(Number(r.ci_loans))             : "—";
+  if (id === "residential_loans")   return r.residential_loans   ? formatDollars(Number(r.residential_loans))    : "—";
+  if (id === "consumer_loans")      return r.consumer_loans      ? formatDollars(Number(r.consumer_loans))       : "—";
+  if (id === "nco_rate")            return r.nco_rate            ? formatPct(Number(r.nco_rate), 2)              : "—";
   if (id === "roa")              return r.roa              ? formatPct(Number(r.roa), 2)              : "—";
   if (id === "roe")              return r.roe              ? formatPct(Number(r.roe), 1)              : "—";
   if (id === "nim")              return r.nim              ? formatPct(Number(r.nim), 2)              : "—";

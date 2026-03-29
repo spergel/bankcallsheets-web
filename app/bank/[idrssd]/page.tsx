@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getInstitution, getBankHistory, getLabels, getPeers } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { derivePeriods } from "@/lib/bankMetrics";
+import { getFdicInstitution, getFdicFinancials, charterLabel, foundedYear } from "@/lib/fdic";
 import Link from "next/link";
 import TabNav from "@/components/bank/TabNav";
 import OverviewTab from "@/components/bank/OverviewTab";
@@ -41,6 +42,12 @@ export default async function BankPage({
   const periods = derivePeriods(historyRaw!);
   const latest  = periods[periods.length - 1] ?? null;
 
+  // FDIC BankFind data — fetched in parallel, fails gracefully
+  const [fdicInst, fdicFinancials] = await Promise.all([
+    getFdicInstitution(inst!.fdic_cert).catch(() => null),
+    getFdicFinancials(inst!.fdic_cert, 40).catch(() => []),
+  ]);
+
   // Build rawData for the overview tab's RawDataSection
   const rawData: Record<string, number> = {};
   if (historyRaw!.length > 0) {
@@ -69,12 +76,15 @@ export default async function BankPage({
 
       {/* Header card */}
       <div className="bg-[#0a2342] text-white rounded p-6 mb-6">
-        <div className="flex flex-wrap gap-4 justify-between items-start">
+        <div className="flex flex-wrap gap-4 justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl font-bold mb-1">{inst!.name}</h1>
             <div className="text-white/70 text-sm">
               {[inst!.address, inst!.city, inst!.state, inst!.zip].filter(Boolean).join(", ")}
             </div>
+            {fdicInst?.cbsanm && (
+              <div className="text-white/50 text-xs mt-0.5">{fdicInst.cbsanm} metro area</div>
+            )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 text-sm">
             {(
@@ -90,6 +100,25 @@ export default async function BankPage({
                 <div className="font-mono">{val || "—"}</div>
               </div>
             ))}
+          </div>
+        </div>
+        {/* FDIC supplemental row */}
+        <div className="border-t border-white/10 pt-3 grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 text-sm">
+          <div>
+            <div className="text-white/50 text-xs uppercase tracking-wide">Holding Company</div>
+            <div className="text-white/90">{fdicInst?.namehcr || "—"}</div>
+          </div>
+          <div>
+            <div className="text-white/50 text-xs uppercase tracking-wide">Regulator</div>
+            <div className="text-white/90">{fdicInst ? charterLabel(fdicInst.chrtagnt, fdicInst.charter) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-white/50 text-xs uppercase tracking-wide">Founded</div>
+            <div className="font-mono">{fdicInst ? foundedYear(fdicInst.estymd) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-white/50 text-xs uppercase tracking-wide">Branches</div>
+            <div className="font-mono">{fdicInst?.offdom != null ? fdicInst.offdom.toLocaleString() : "—"}</div>
           </div>
         </div>
       </div>
@@ -109,9 +138,9 @@ export default async function BankPage({
         />
       )}
       {validTab === "assetquality" && <AssetQualityTab periods={periods} />}
-      {validTab === "capital"      && <CapitalTab      periods={periods} />}
+      {validTab === "capital"      && <CapitalTab      periods={periods} fdicFinancials={fdicFinancials} />}
       {validTab === "profitability"&& <ProfitabilityTab periods={periods} />}
-      {validTab === "loans"        && <LoansTab        periods={periods} />}
+      {validTab === "loans"        && <LoansTab        periods={periods} fdicFinancials={fdicFinancials} />}
       {validTab === "deposits"     && <DepositsTab     periods={periods} />}
       {validTab === "growth"       && <GrowthTab       periods={periods} />}
       {validTab === "peers"        && <PeerComparisonTab subject={inst!} peers={peers} />}
