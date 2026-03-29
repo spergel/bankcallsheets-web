@@ -44,6 +44,13 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: "residential_loans",   label: "Residential Loans" },
   { value: "consumer_loans",      label: "Consumer Loans" },
   { value: "nco_rate",            label: "NCO Rate" },
+  { value: "market_cap",          label: "Market Cap" },
+  { value: "stock_price",         label: "Stock Price" },
+  { value: "pb_ratio",            label: "P/B Ratio" },
+  { value: "pe_ratio",            label: "P/E Ratio" },
+  { value: "tbv_per_share",       label: "TBV / Share" },
+  { value: "eps_diluted",         label: "EPS (Diluted)" },
+  { value: "div_yield",           label: "Dividend Yield" },
   { value: "roa",              label: "ROA" },
   { value: "roe",              label: "ROE" },
   { value: "nim",              label: "NIM" },
@@ -118,6 +125,13 @@ const COLS_AVAILABLE: ColDef[] = [
   { id: "residential_loans",   label: "Residential",   sort: "residential_loans",   right: true },
   { id: "consumer_loans",      label: "Consumer",      sort: "consumer_loans",      right: true },
   { id: "nco_rate",            label: "NCO Rate",      sort: "nco_rate",            right: true },
+  { id: "market_cap",          label: "Mkt Cap",       sort: "market_cap",          right: true },
+  { id: "stock_price",         label: "Price",         sort: "stock_price",         right: true },
+  { id: "pb_ratio",            label: "P/B",           sort: "pb_ratio",            right: true },
+  { id: "pe_ratio",            label: "P/E",           sort: "pe_ratio",            right: true },
+  { id: "tbv_per_share",       label: "TBV/Share",     sort: "tbv_per_share",       right: true },
+  { id: "eps_diluted",         label: "EPS",           sort: "eps_diluted",         right: true },
+  { id: "div_yield",           label: "Div Yield",     sort: "div_yield",           right: true },
   { id: "roa",              label: "ROA",           sort: "roa",              right: true },
   { id: "roe",              label: "ROE",           sort: "roe",              right: true },
   { id: "nim",              label: "NIM",           sort: "nim",              right: true },
@@ -164,7 +178,14 @@ function colCell(id: string, r: IndexRow): React.ReactNode {
   if (id === "ci_loans")            return r.ci_loans            ? formatDollars(Number(r.ci_loans))             : "—";
   if (id === "residential_loans")   return r.residential_loans   ? formatDollars(Number(r.residential_loans))    : "—";
   if (id === "consumer_loans")      return r.consumer_loans      ? formatDollars(Number(r.consumer_loans))       : "—";
-  if (id === "nco_rate")            return r.nco_rate            ? formatPct(Number(r.nco_rate), 2)              : "—";
+  if (id === "nco_rate")     return r.nco_rate     ? formatPct(Number(r.nco_rate), 2)    : "—";
+  if (id === "market_cap")   return r.market_cap   ? formatDollars(Number(r.market_cap)) : "—";
+  if (id === "stock_price")  return r.stock_price  ? `$${Number(r.stock_price).toFixed(2)}` : "—";
+  if (id === "pb_ratio")     return r.pb_ratio     ? `${Number(r.pb_ratio).toFixed(2)}x`    : "—";
+  if (id === "pe_ratio")     return r.pe_ratio     ? `${Number(r.pe_ratio).toFixed(1)}x`    : "—";
+  if (id === "tbv_per_share")return r.tbv_per_share? `$${Number(r.tbv_per_share).toFixed(2)}` : "—";
+  if (id === "eps_diluted")  return r.eps_diluted  ? `$${Number(r.eps_diluted).toFixed(2)}` : "—";
+  if (id === "div_yield")    return r.div_yield    ? formatPct(Number(r.div_yield), 2)      : "—";
   if (id === "roa")              return r.roa              ? formatPct(Number(r.roa), 2)              : "—";
   if (id === "roe")              return r.roe              ? formatPct(Number(r.roe), 1)              : "—";
   if (id === "nim")              return r.nim              ? formatPct(Number(r.nim), 2)              : "—";

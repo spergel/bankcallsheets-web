@@ -123,6 +123,42 @@ export default async function BankPage({
         </div>
       </div>
 
+      {/* Market data strip — only shown for publicly traded institutions */}
+      {inst!.bhc_ticker && (
+        <div className="bg-white border border-gray-200 rounded p-4 mb-4 flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#0a2342] text-white text-xs font-bold px-2 py-0.5 rounded font-mono">
+              {inst!.bhc_ticker}
+            </span>
+            {inst!.bhc_name && (
+              <span className="text-sm text-gray-500">{inst!.bhc_name}</span>
+            )}
+          </div>
+          {([
+            ["Price",      inst!.stock_price ? `$${Number(inst!.stock_price).toFixed(2)}` : null],
+            ["Market Cap", inst!.market_cap  ? `$${(Number(inst!.market_cap) / 1_000_000).toFixed(1)}B` : null],
+            ["P/E",        inst!.pe_ratio    ? `${Number(inst!.pe_ratio).toFixed(1)}x`  : null],
+            ["P/B",        inst!.pb_ratio    ? `${Number(inst!.pb_ratio).toFixed(2)}x`  : null],
+            ["TBV/Share",  inst!.tbv_per_share ? `$${Number(inst!.tbv_per_share).toFixed(2)}` : null],
+            ["EPS (diluted)", inst!.eps_diluted ? `$${Number(inst!.eps_diluted).toFixed(2)}` : null],
+            ["Div/Share",  inst!.div_per_share ? `$${Number(inst!.div_per_share).toFixed(2)}` : null],
+            ["Div Yield",  inst!.div_yield    ? `${(Number(inst!.div_yield) * 100).toFixed(2)}%` : null],
+          ] as [string, string | null][]).filter(([, v]) => v != null).map(([lbl, val]) => (
+            <div key={lbl} className="text-sm">
+              <span className="text-gray-400 text-xs uppercase tracking-wide block">{lbl}</span>
+              <span className="font-mono font-semibold text-[#0a2342]">{val}</span>
+            </div>
+          ))}
+          <a
+            href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${inst!.bhc_cik}&type=10-K&dateb=&owner=include&count=5`}
+            target="_blank" rel="noopener noreferrer"
+            className="ml-auto text-xs text-[#0a2342] hover:text-[#c9a84c] underline underline-offset-2"
+          >
+            SEC Filings →
+          </a>
+        </div>
+      )}
+
       {/* Tab navigation */}
       <Suspense>
         <TabNav idrssd={idStr} />

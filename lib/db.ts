@@ -69,6 +69,19 @@ export type IndexRow = {
   residential_loans:   string;
   consumer_loans:      string;
   nco_rate:            string;
+  // SEC/market data
+  bhc_name:    string;
+  bhc_cik:     string;
+  bhc_ticker:  string;
+  shares_out:  string;
+  eps_diluted: string;
+  div_per_share: string;
+  tbv_per_share: string;
+  market_cap:  string;
+  stock_price: string;
+  pe_ratio:    string;
+  pb_ratio:    string;
+  div_yield:   string;
 };
 
 function toRow(r: Record<string, unknown>): IndexRow {
@@ -113,6 +126,18 @@ function toRow(r: Record<string, unknown>): IndexRow {
     residential_loans:   r.residential_loans   != null ? String(r.residential_loans)   : '',
     consumer_loans:      r.consumer_loans      != null ? String(r.consumer_loans)      : '',
     nco_rate:            r.nco_rate            != null ? String(r.nco_rate)            : '',
+    bhc_name:    String(r.bhc_name    ?? ''),
+    bhc_cik:     String(r.bhc_cik     ?? ''),
+    bhc_ticker:  String(r.bhc_ticker  ?? ''),
+    shares_out:  r.shares_out  != null ? String(r.shares_out)  : '',
+    eps_diluted: r.eps_diluted != null ? String(r.eps_diluted) : '',
+    div_per_share: r.div_per_share != null ? String(r.div_per_share) : '',
+    tbv_per_share: r.tbv_per_share != null ? String(r.tbv_per_share) : '',
+    market_cap:  r.market_cap  != null ? String(r.market_cap)  : '',
+    stock_price: r.stock_price != null ? String(r.stock_price) : '',
+    pe_ratio:    r.pe_ratio    != null ? String(r.pe_ratio)    : '',
+    pb_ratio:    r.pb_ratio    != null ? String(r.pb_ratio)    : '',
+    div_yield:   r.div_yield   != null ? String(r.div_yield)   : '',
   };
 }
 
@@ -193,7 +218,8 @@ export type SortField = 'total_assets' | 'total_deposits' | 'total_equity' | 'ne
   | 'roa' | 'roe' | 'nim' | 'efficiency_ratio' | 'ltd_ratio' | 'npl_ratio' | 'coverage_ratio'
   | 'gross_loans' | 'securities' | 'oreo' | 'alll' | 'provision' | 'interest_income' | 'nonint_income' | 'loan_to_asset'
   | 'tier1_ratio' | 'total_capital_ratio' | 'leverage_ratio'
-  | 'cre_loans' | 'construction_loans' | 'ci_loans' | 'residential_loans' | 'consumer_loans' | 'nco_rate';
+  | 'cre_loans' | 'construction_loans' | 'ci_loans' | 'residential_loans' | 'consumer_loans' | 'nco_rate'
+  | 'market_cap' | 'stock_price' | 'pe_ratio' | 'pb_ratio' | 'div_yield' | 'tbv_per_share' | 'eps_diluted';
 
 const SIZE_BUCKETS: Record<string, [number, number | null]> = {
   nano:      [0,            100_000],
@@ -233,6 +259,13 @@ const SORT_COLUMN: Record<SortField, string> = {
   residential_loans:   'residential_loans',
   consumer_loans:      'consumer_loans',
   nco_rate:            'nco_rate',
+  market_cap:   'market_cap',
+  stock_price:  'stock_price',
+  pe_ratio:     'pe_ratio',
+  pb_ratio:     'pb_ratio',
+  div_yield:    'div_yield',
+  tbv_per_share:'tbv_per_share',
+  eps_diluted:  'eps_diluted',
 };
 
 export async function advancedSearch(params: {
