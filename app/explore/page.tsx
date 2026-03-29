@@ -21,18 +21,26 @@ const STATE_NAMES: Record<string, string> = {
 
 type ColDef = { id: string; label: string; sort: SortField };
 const COLS_AVAILABLE: ColDef[] = [
-  { id: "total_assets",     label: "Assets",      sort: "total_assets"     },
-  { id: "total_deposits",   label: "Deposits",    sort: "total_deposits"   },
-  { id: "total_equity",     label: "Equity",      sort: "total_equity"     },
-  { id: "eq_ratio",         label: "Eq/Assets",   sort: "equity_ratio"     },
-  { id: "net_income",       label: "Net Income",  sort: "net_income"       },
-  { id: "roa",              label: "ROA",         sort: "roa"              },
-  { id: "roe",              label: "ROE",         sort: "roe"              },
-  { id: "nim",              label: "NIM",         sort: "nim"              },
-  { id: "efficiency_ratio", label: "Efficiency",  sort: "efficiency_ratio" },
-  { id: "ltd_ratio",        label: "LTD",         sort: "ltd_ratio"        },
-  { id: "npl_ratio",        label: "NPL Ratio",   sort: "npl_ratio"        },
-  { id: "coverage_ratio",   label: "Coverage",    sort: "coverage_ratio"   },
+  { id: "total_assets",     label: "Assets",        sort: "total_assets"     },
+  { id: "total_deposits",   label: "Deposits",      sort: "total_deposits"   },
+  { id: "total_equity",     label: "Equity",        sort: "total_equity"     },
+  { id: "eq_ratio",         label: "Eq/Assets",     sort: "equity_ratio"     },
+  { id: "net_income",       label: "Net Income",    sort: "net_income"       },
+  { id: "gross_loans",      label: "Gross Loans",   sort: "gross_loans"      },
+  { id: "securities",       label: "Securities",    sort: "securities"       },
+  { id: "interest_income",  label: "Interest Inc.", sort: "interest_income"  },
+  { id: "nonint_income",    label: "Fee Income",    sort: "nonint_income"    },
+  { id: "provision",        label: "Provision",     sort: "provision"        },
+  { id: "oreo",             label: "OREO",          sort: "oreo"             },
+  { id: "alll",             label: "ALLL",          sort: "alll"             },
+  { id: "loan_to_asset",    label: "Loan/Asset",    sort: "loan_to_asset"    },
+  { id: "roa",              label: "ROA",           sort: "roa"              },
+  { id: "roe",              label: "ROE",           sort: "roe"              },
+  { id: "nim",              label: "NIM",           sort: "nim"              },
+  { id: "efficiency_ratio", label: "Efficiency",    sort: "efficiency_ratio" },
+  { id: "ltd_ratio",        label: "LTD",           sort: "ltd_ratio"        },
+  { id: "npl_ratio",        label: "NPL Ratio",     sort: "npl_ratio"        },
+  { id: "coverage_ratio",   label: "Coverage",      sort: "coverage_ratio"   },
 ];
 const DEFAULT_COLS = ["total_assets", "total_deposits", "total_equity", "eq_ratio", "net_income"];
 
@@ -49,6 +57,14 @@ function colCell(id: string, r: IndexRow): React.ReactNode {
     const a = Number(r.total_assets), e = Number(r.total_equity);
     return a > 0 && r.total_equity ? `${((e / a) * 100).toFixed(1)}%` : "—";
   }
+  if (id === "gross_loans")     return r.gross_loans     ? formatDollars(Number(r.gross_loans))     : "—";
+  if (id === "securities")      return r.securities      ? formatDollars(Number(r.securities))      : "—";
+  if (id === "interest_income") return r.interest_income ? formatDollars(Number(r.interest_income)) : "—";
+  if (id === "nonint_income")   return r.nonint_income   ? formatDollars(Number(r.nonint_income))   : "—";
+  if (id === "provision")       return r.provision       ? formatDollars(Number(r.provision))       : "—";
+  if (id === "oreo")            return r.oreo            ? formatDollars(Number(r.oreo))            : "—";
+  if (id === "alll")            return r.alll            ? formatDollars(Number(r.alll))            : "—";
+  if (id === "loan_to_asset")   return r.loan_to_asset   ? formatPct(Number(r.loan_to_asset), 1)    : "—";
   if (id === "roa")              return r.roa              ? formatPct(Number(r.roa), 2)              : "—";
   if (id === "roe")              return r.roe              ? formatPct(Number(r.roe), 1)              : "—";
   if (id === "nim")              return r.nim              ? formatPct(Number(r.nim), 2)              : "—";
@@ -65,6 +81,14 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: "total_equity",     label: "Total Equity" },
   { value: "net_income",       label: "Net Income" },
   { value: "equity_ratio",     label: "Eq / Assets" },
+  { value: "gross_loans",      label: "Gross Loans" },
+  { value: "securities",       label: "Securities" },
+  { value: "interest_income",  label: "Interest Income" },
+  { value: "nonint_income",    label: "Fee Income" },
+  { value: "provision",        label: "Provision" },
+  { value: "oreo",             label: "OREO" },
+  { value: "alll",             label: "ALLL" },
+  { value: "loan_to_asset",    label: "Loan / Asset" },
   { value: "roa",              label: "ROA" },
   { value: "roe",              label: "ROE" },
   { value: "nim",              label: "NIM" },

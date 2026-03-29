@@ -51,6 +51,14 @@ export type IndexRow = {
   ltd_ratio:        string;
   npl_ratio:        string;
   coverage_ratio:   string;
+  gross_loans:      string;
+  securities:       string;
+  oreo:             string;
+  alll:             string;
+  provision:        string;
+  interest_income:  string;
+  nonint_income:    string;
+  loan_to_asset:    string;
 };
 
 function toRow(r: Record<string, unknown>): IndexRow {
@@ -78,6 +86,14 @@ function toRow(r: Record<string, unknown>): IndexRow {
     ltd_ratio:        r.ltd_ratio        != null ? String(r.ltd_ratio)        : '',
     npl_ratio:        r.npl_ratio        != null ? String(r.npl_ratio)        : '',
     coverage_ratio:   r.coverage_ratio   != null ? String(r.coverage_ratio)   : '',
+    gross_loans:      r.gross_loans      != null ? String(r.gross_loans)      : '',
+    securities:       r.securities       != null ? String(r.securities)       : '',
+    oreo:             r.oreo             != null ? String(r.oreo)             : '',
+    alll:             r.alll             != null ? String(r.alll)             : '',
+    provision:        r.provision        != null ? String(r.provision)        : '',
+    interest_income:  r.interest_income  != null ? String(r.interest_income)  : '',
+    nonint_income:    r.nonint_income    != null ? String(r.nonint_income)    : '',
+    loan_to_asset:    r.loan_to_asset    != null ? String(r.loan_to_asset)    : '',
   };
 }
 
@@ -155,7 +171,8 @@ export async function searchIndex(
 }
 
 export type SortField = 'total_assets' | 'total_deposits' | 'total_equity' | 'net_income' | 'equity_ratio'
-  | 'roa' | 'roe' | 'nim' | 'efficiency_ratio' | 'ltd_ratio' | 'npl_ratio' | 'coverage_ratio';
+  | 'roa' | 'roe' | 'nim' | 'efficiency_ratio' | 'ltd_ratio' | 'npl_ratio' | 'coverage_ratio'
+  | 'gross_loans' | 'securities' | 'oreo' | 'alll' | 'provision' | 'interest_income' | 'nonint_income' | 'loan_to_asset';
 
 const SIZE_BUCKETS: Record<string, [number, number | null]> = {
   nano:      [0,            100_000],
@@ -178,6 +195,14 @@ const SORT_COLUMN: Record<SortField, string> = {
   ltd_ratio:        'ltd_ratio',
   npl_ratio:        'npl_ratio',
   coverage_ratio:   'coverage_ratio',
+  gross_loans:      'gross_loans',
+  securities:       'securities',
+  oreo:             'oreo',
+  alll:             'alll',
+  provision:        'provision',
+  interest_income:  'interest_income',
+  nonint_income:    'nonint_income',
+  loan_to_asset:    'loan_to_asset',
 };
 
 export async function advancedSearch(params: {
