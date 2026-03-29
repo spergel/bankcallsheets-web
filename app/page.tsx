@@ -1,21 +1,12 @@
 import Link from "next/link";
 import { formatDollars, formatDate } from "@/lib/format";
+import { getStats } from "@/lib/db";
 
-async function getStats() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/api/stats`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
+export const runtime = 'nodejs';
 
 export default async function HomePage() {
-  const stats = await getStats();
-  const topBanks: { idrssd: number; name: string; state: string; total_assets: number }[] =
+  const stats = await getStats().catch(() => null);
+  const topBanks: { idrssd: string; name: string; state: string; total_assets: number }[] =
     stats?.top_banks ?? [];
 
   return (
