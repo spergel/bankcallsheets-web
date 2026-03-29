@@ -38,7 +38,6 @@ export default function Nav() {
         </form>
 
         <nav className="flex items-center gap-4 text-sm shrink-0">
-          <Link href="/explore" className="text-white/80 hover:text-white transition-colors">Browse</Link>
           <Link href="/about" className="text-white/80 hover:text-white transition-colors">About</Link>
         </nav>
       </div>

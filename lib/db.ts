@@ -129,7 +129,7 @@ export async function searchIndex(
   `;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, ...params) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await (db as any)(query, params) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
@@ -227,7 +227,7 @@ export async function advancedSearch(params: {
   `;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, ...values) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await (db as any)(query, values) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
@@ -261,7 +261,7 @@ export async function browseIndex(
   `;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = await (db as any)(query, ...values) as (Record<string, unknown> & { total_count: string })[];
+  const rows = await (db as any)(query, values) as (Record<string, unknown> & { total_count: string })[];
   const total = rows.length > 0 ? parseInt(String(rows[0].total_count), 10) : 0;
   return { results: rows.map(toRow), total };
 }
