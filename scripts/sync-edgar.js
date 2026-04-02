@@ -16,7 +16,7 @@ require('dotenv').config({ path: '.env.local' });
 const { Client } = require('pg');
 
 const SEC_BASE   = 'https://data.sec.gov';
-const USER_AGENT = 'BankData Research tool/1.0 (non-commercial; github.com/spergel/bankcallsheets-web)';
+const USER_AGENT = 'BankData/1.0 contact@bankcallsheets.com';
 
 function getUrl() {
   return (process.env.DATABASE_URL ?? '').replace('-pooler', '');

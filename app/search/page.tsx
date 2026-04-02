@@ -214,6 +214,7 @@ export default async function SearchPage({
   const maxAssets       = p.maxAssets ?? "";
   const minEquityRatio  = p.minEqRatio ?? "";
   const profitableOnly  = p.profitable ?? "";
+  const publicOnly      = p.public ?? "";
   const minRoa          = p.minRoa ?? "";
   const maxEfficiency   = p.maxEff ?? "";
   const minNim          = p.minNim ?? "";
@@ -226,12 +227,12 @@ export default async function SearchPage({
   const rawCols = p.cols ? p.cols.split(",").filter(c => COLS_AVAILABLE.some(d => d.id === c)) : null;
   const activeCols = rawCols ?? DEFAULT_COLS;
 
-  const hasFilters = !!(q || state || city || filingType || size || minAssets || maxAssets || minEquityRatio || profitableOnly || minRoa || maxEfficiency || minNim || maxNpl);
+  const hasFilters = !!(q || state || city || filingType || size || minAssets || maxAssets || minEquityRatio || profitableOnly || publicOnly || minRoa || maxEfficiency || minNim || maxNpl);
 
   const { results, total } = await (async () => {
     if (!hasFilters) return { results: [], total: 0 };
     try {
-      return await advancedSearch({ q, state, city, filingType, size, minAssets, maxAssets, minEquityRatio, profitableOnly, minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
+      return await advancedSearch({ q, state, city, filingType, size, minAssets, maxAssets, minEquityRatio, profitableOnly, publicOnly, dedupeByBhc: publicOnly === "1", minRoa, maxEfficiency, minNim, maxNpl, sort, sortDir, page, limit: LIMIT });
     } catch (e) {
       console.error('[search] advancedSearch error:', e);
       return { results: [], total: 0 };
@@ -251,6 +252,7 @@ export default async function SearchPage({
     if (maxAssets)      sp.set("maxAssets", maxAssets);
     if (minEquityRatio) sp.set("minEqRatio", minEquityRatio);
     if (profitableOnly) sp.set("profitable", profitableOnly);
+    if (publicOnly)     sp.set("public", publicOnly);
     if (minRoa)         sp.set("minRoa", minRoa);
     if (maxEfficiency)  sp.set("maxEff", maxEfficiency);
     if (minNim)         sp.set("minNim", minNim);
@@ -371,6 +373,19 @@ export default async function SearchPage({
               Profitable only
             </label>
           </div>
+          <div className="flex flex-col gap-1 justify-end">
+            <label className="text-xs text-gray-500 invisible">Filter</label>
+            <label className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white cursor-pointer select-none hover:bg-gray-50">
+              <input
+                type="checkbox"
+                name="public"
+                value="1"
+                defaultChecked={publicOnly === "1"}
+                className="accent-[#0a2342]"
+              />
+              Publicly traded only
+            </label>
+          </div>
         </div>
 
         {/* Row 3: financial quality filters */}
@@ -412,7 +427,7 @@ export default async function SearchPage({
         <div className="flex items-baseline justify-between mb-3">
           <p className="text-sm text-gray-600">
             {total > 0
-              ? <><strong className="text-[#0a2342]">{total.toLocaleString()}</strong> institution{total !== 1 ? "s" : ""} found</>
+              ? <><strong className="text-[#0a2342]">{total.toLocaleString()}</strong> {publicOnly === "1" ? "holding compan" + (total !== 1 ? "ies" : "y") : "institution" + (total !== 1 ? "s" : "")} found</>
               : "No results matched your filters."}
           </p>
           {totalPages > 1 && (
@@ -468,9 +483,19 @@ export default async function SearchPage({
                     {((page - 1) * LIMIT + i + 1).toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5 max-w-xs">
-                    <Link href={`/bank/${r.idrssd}`} className="text-[#0a2342] hover:text-[#c9a84c] transition-colors font-medium truncate block">
-                      {r.name}
-                    </Link>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {r.bhc_ticker && (
+                        <span className="bg-[#0a2342] text-white text-[10px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0">
+                          {r.bhc_ticker}
+                        </span>
+                      )}
+                      <Link href={`/bank/${r.idrssd}`} className="text-[#0a2342] hover:text-[#c9a84c] transition-colors font-medium truncate">
+                        {r.name}
+                      </Link>
+                      {r.subsidiary_count && Number(r.subsidiary_count) > 1 && (
+                        <span className="text-[10px] text-gray-400 shrink-0">{r.subsidiary_count} banks</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
                     {r.city}{r.city && r.state ? ", " : ""}{r.state}

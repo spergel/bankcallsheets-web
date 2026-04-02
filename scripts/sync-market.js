@@ -16,48 +16,26 @@
 require('dotenv').config({ path: '.env.local' });
 const { Client } = require('pg');
 
-const YF_BASE    = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary';
-const YF_MODULES = 'summaryDetail,defaultKeyStatistics,price';
+// Yahoo Finance v8 chart endpoint — returns price without auth
+const YF_CHART   = 'https://query2.finance.yahoo.com/v8/finance/chart';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 function getUrl() {
   return (process.env.DATABASE_URL ?? '').replace('-pooler', '');
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-function raw(obj) { return obj?.raw ?? obj ?? null; }
 
-async function fetchQuote(ticker) {
-  const url = `${YF_BASE}/${ticker}?modules=${YF_MODULES}&corsDomain=finance.yahoo.com`;
+async function fetchPrice(ticker) {
+  const url = `${YF_CHART}/${ticker}?interval=1d&range=1d`;
   const res = await fetch(url, {
-    headers: {
-      'User-Agent':  USER_AGENT,
-      'Accept':      'application/json',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
+    headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${ticker}`);
   const json = await res.json();
-  const error = json?.quoteSummary?.error;
-  if (error) throw new Error(`Yahoo error for ${ticker}: ${error.description ?? error}`);
-  return json?.quoteSummary?.result?.[0] ?? null;
-}
-
-function extractData(result) {
-  if (!result) return null;
-  const sd  = result.summaryDetail     ?? {};
-  const ks  = result.defaultKeyStatistics ?? {};
-  const pr  = result.price             ?? {};
-
-  const price     = raw(pr.regularMarketPrice) ?? raw(sd.previousClose);
-  const marketCap = raw(pr.marketCap) ?? raw(sd.marketCap); // actual dollars
-
-  return {
-    stock_price: price      != null ? Number(price)      : null,
-    market_cap:  marketCap  != null ? Math.round(Number(marketCap) / 1000) : null, // → $000s
-    pe_ratio:    raw(sd.trailingPE) != null  ? Number(raw(sd.trailingPE))  : null,
-    pb_ratio:    raw(ks.priceToBook) != null ? Number(raw(ks.priceToBook)) : null,
-    div_yield:   raw(sd.dividendYield) != null ? Number(raw(sd.dividendYield)) : null, // already decimal
-  };
+  if (json?.chart?.error) throw new Error(`Yahoo error for ${ticker}: ${json.chart.error}`);
+  const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  if (price == null) throw new Error(`no price for ${ticker}`);
+  return Number(price);
 }
 
 async function main() {
@@ -77,9 +55,14 @@ async function main() {
   }
   await client.query(`CREATE INDEX IF NOT EXISTS idx_inst_mktcap ON institutions(market_cap DESC NULLS LAST)`);
 
-  // Get distinct tickers
+  // Get distinct tickers with EDGAR data for ratio computation
   const { rows } = await client.query(`
-    SELECT DISTINCT bhc_ticker, array_agg(idrssd) AS idrssd_list
+    SELECT DISTINCT bhc_ticker,
+      array_agg(idrssd)          AS idrssd_list,
+      MAX(shares_out)            AS shares_out,
+      MAX(eps_diluted)           AS eps_diluted,
+      MAX(tbv_per_share)         AS tbv_per_share,
+      MAX(div_per_share)         AS div_per_share
     FROM institutions
     WHERE bhc_ticker IS NOT NULL
     GROUP BY bhc_ticker
@@ -91,11 +74,20 @@ async function main() {
   const failures = [];
 
   for (let i = 0; i < rows.length; i++) {
-    const { bhc_ticker, idrssd_list } = rows[i];
+    const { bhc_ticker, idrssd_list, shares_out, eps_diluted, tbv_per_share, div_per_share } = rows[i];
     try {
-      const result = await fetchQuote(bhc_ticker);
-      const data   = extractData(result);
-      if (!data) throw new Error('no data returned');
+      const price = await fetchPrice(bhc_ticker);
+
+      // Compute ratios from EDGAR data
+      const sharesN  = shares_out    != null ? Number(shares_out)    : null;
+      const epsN     = eps_diluted   != null ? Number(eps_diluted)   : null;
+      const tbvN     = tbv_per_share != null ? Number(tbv_per_share) : null;
+      const divN     = div_per_share != null ? Number(div_per_share) : null;
+
+      const marketCap = sharesN ? Math.round(sharesN * price / 1000) : null; // → $000s
+      const peRatio   = epsN  && epsN  > 0 ? price / epsN  : null;
+      const pbRatio   = tbvN  && tbvN  > 0 ? price / tbvN  : null;
+      const divYield  = divN  && price > 0  ? divN  / price : null;
 
       await client.query(
         `UPDATE institutions SET
@@ -105,7 +97,7 @@ async function main() {
            pb_ratio    = $4,
            div_yield   = $5
          WHERE idrssd = ANY($6)`,
-        [data.stock_price, data.market_cap, data.pe_ratio, data.pb_ratio, data.div_yield, idrssd_list],
+        [price, marketCap, peRatio, pbRatio, divYield, idrssd_list],
       );
       ok++;
     } catch (e) {
@@ -122,9 +114,9 @@ async function main() {
   }
 
   console.log(`\nDone. ${ok} tickers updated, ${failed} failed.`);
-  if (failures.length > 0 && failures.length <= 20) {
-    console.log('Failures:');
-    for (const f of failures) console.log(`  ${f}`);
+  if (failures.length > 0) {
+    console.log(`First failures (showing up to 10):`);
+    for (const f of failures.slice(0, 10)) console.log(`  ${f}`);
   }
 
   // Quick summary

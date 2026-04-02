@@ -12,6 +12,7 @@ const TABS = [
   { id: "deposits",     label: "Deposits" },
   { id: "growth",       label: "Growth" },
   { id: "peers",        label: "Peers" },
+  { id: "holdingco",   label: "Holding Co." },
 ];
 
 export default function TabNav({ idrssd }: { idrssd: string }) {

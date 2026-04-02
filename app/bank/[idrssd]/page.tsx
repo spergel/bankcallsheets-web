@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getInstitution, getBankHistory, getLabels, getPeers } from "@/lib/db";
+import { getInstitution, getBankHistory, getLabels, getPeers, getBhcFinancials } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { derivePeriods } from "@/lib/bankMetrics";
 import { getFdicInstitution, getFdicFinancials, charterLabel, foundedYear } from "@/lib/fdic";
@@ -14,6 +14,7 @@ import LoansTab from "@/components/bank/LoansTab";
 import DepositsTab from "@/components/bank/DepositsTab";
 import GrowthTab from "@/components/bank/GrowthTab";
 import PeerComparisonTab from "@/components/bank/PeerComparisonTab";
+import HoldingCoTab from "@/components/bank/HoldingCoTab";
 
 export const runtime = 'nodejs';
 
@@ -58,11 +59,15 @@ export default async function BankPage({
     }
   }
 
-  const validTab = ["overview","assetquality","capital","profitability","loans","deposits","growth","peers"].includes(tab)
+  const validTab = ["overview","assetquality","capital","profitability","loans","deposits","growth","peers","holdingco"].includes(tab)
     ? tab : "overview";
 
   const peers = validTab === "peers" && latest?.total_assets
     ? await getPeers(idrssd, latest.total_assets)
+    : [];
+
+  const bhcFinancials = validTab === "holdingco" && inst!.bhc_cik
+    ? await getBhcFinancials(inst!.bhc_cik)
     : [];
 
   return (
@@ -180,6 +185,13 @@ export default async function BankPage({
       {validTab === "deposits"     && <DepositsTab     periods={periods} />}
       {validTab === "growth"       && <GrowthTab       periods={periods} />}
       {validTab === "peers"        && <PeerComparisonTab subject={inst!} peers={peers} />}
+      {validTab === "holdingco"   && (
+        <HoldingCoTab
+          rows={bhcFinancials}
+          ticker={inst!.bhc_ticker ?? ""}
+          bhcName={inst!.bhc_name ?? ""}
+        />
+      )}
     </div>
   );
 }
